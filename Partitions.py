@@ -1,6 +1,8 @@
 import copy
 import numpy as np
 import random
+from itertools import combinations
+
 
 def generate_list_of_lists(d):
     return [[i] for i in range(0, d)]
@@ -136,7 +138,7 @@ def Coarsen_Partition_NC(Partition, n): # For each edge.
     return Partition_New
 
 
-def random_partition(d,k): # set d elements, starting from 0; k classes.
+def random_partition_NC(d,k): # set d elements, starting from 0; k classes.
     Partition = [list(range(0, d))]
     for class_par in range(2,k+1):
         #valid_blocks = [block for block in Partition if len(block) >= 2]
@@ -151,35 +153,147 @@ def random_partition(d,k): # set d elements, starting from 0; k classes.
 def check_partition(partition_true, partition_est): # both list is sorted
     return partition_true == partition_est
 
+
+
+
+################################################## Interval partition ##################################################
+def Coarsen_Partition_Interval(Partition, n):
+    Partition_New = []
+    if len(Partition) == 1:
+        Partition_New = [Partition]
+    elif len(Partition) == 2:
+        Partition_New = [[Partition[0] + Partition[1]]]
+    else:
+        for i in range(len(Partition)-1):
+            New_Partition = Partition[:i] + [Partition[i] + Partition[i + 1]] + Partition[i + 2:]
+            Partition_New.append(New_Partition)
+    return Partition_New
+
+def random_interval_partition(d,k):
+    Partition = generate_list_of_lists(d)
+    for i in range(1,d-k+1): # counter
+        random_index = random.randint(0, len(Partition) - 2)
+        Partition = Partition[:random_index] + [Partition[random_index] + Partition[random_index + 1]] + Partition[random_index + 2:]
+    return Partition
+    # start from  d = {{1},{2}....}
+    # randomly choose block to merge
+
+
+################################################## Nonnesting partition ##################################################
+
+
+def create_edges(sorted_list):
+    edges = []
+    for i in range(len(sorted_list) - 1):
+        # Create an edge between the current element and the next element
+        edges.append([sorted_list[i], sorted_list[i + 1]])
+    return edges
+
+def is_nested(edge1, edge2):
+    # Check if edge1 is nested within edge2
+    return (edge2[0] < edge1[0] < edge1[1] < edge2[1]) or \
+           (edge1[0] < edge2[0] < edge2[1] < edge1[1])
+
+def check_nested_edges(list_A, list_B): # true if there is nested, false of non_nested
+    for edge_A in list_A:
+        for edge_B in list_B:
+            if is_nested(edge_A, edge_B):
+ #               print(edge_A, edge_B)
+  #              print(is_nested(edge_A, edge_B))
+                return True
+    return False
+
+def Coarsen_Partition_NN(Partition, n):
+    # Get all combinations of two blocks from the partition
+    Partition_New = []
+    for (i, j) in combinations(range(len(Partition)), 2):
+        # Merge the two selected blocks
+        merged_block = sorted(Partition[i] + Partition[j])
+
+        left_blocks = []
+        # List the blocks that were not merged
+        left_blocks = [Partition[k] for k in range(len(Partition)) if k != i and k != j]
+
+        for Partition_left in left_blocks: # need to check all block and left_block
+            if check_nested_edges(create_edges(merged_block),create_edges(Partition_left)): # there is nesting arcs, skip (i,j)
+                break
+        else:
+            New_nonnesting_Partition = copy.deepcopy(left_blocks + [merged_block])
+            Partition_New.append(copy.deepcopy(sorted(New_nonnesting_Partition, key=lambda subset: subset[0])))
+
+    return Partition_New
+
+
+
+def Random_Partition_NN(d, k): # need to fix
+    # Get all combinations of two blocks from the partition
+    partition = generate_list_of_lists(d)
+
+    for counter in range(1, d - k + 1):  # counter
+        print(counter)
+        indices = list(range(len(partition)))
+        tried_pairs = []
+        NoNonestingCreated = True
+
+        possible_merge = list(combinations(range(len(partition)), 2))
+
+        while NoNonestingCreated:
+ #           print(len(possible_merge))
+            i, j = random.choice(possible_merge)
+
+            merged_block = sorted(partition[i] + partition[j])
+
+            left_blocks = []
+            # List the blocks that were not merged
+            left_blocks = [partition[k] for k in range(len(partition)) if k != i and k != j]
+
+            for partition_left in left_blocks:
+                if check_nested_edges(create_edges(merged_block), create_edges(partition_left)):  # Yes, skip this (i,j)
+                    possible_merge.remove((i, j))
+                    break
+            else:
+                New_nonnesting_Partition = sorted(copy.deepcopy(left_blocks + [merged_block]), key=lambda subset: subset[0])
+                partition = copy.deepcopy(New_nonnesting_Partition)
+                NoNonestingCreated = False
+            # Add this pair to the tried set
+    return partition
+
+
+def Hard_Partition_NN(d, k):
+    # Initialize a list of k empty classes
+    partition = [[] for _ in range(k)]
+
+    # Distribute elements into the k classes
+    for i in range(k):
+        partition[i] = [i + c * k for c in range(d // k + 1) if i + c * k < d]
+
+    return partition
+
+
+def Random_Sparse_Vector(d, k):
+    if k > d:
+        raise ValueError("k cannot be greater than d")
+
+    # Step 1: Initialize vector
+    vector = np.zeros(d)
+
+    # Step 2: Select k unique indices
+    indices = np.random.choice(d, k, replace=False)
+
+    # Step 3: Assign random values between 0 and 10 to these indices
+    vector[indices] = np.random.uniform(0, 1, k)
+
+    return vector
+
 #partition = [[1],[2],[3],[4],[5]]
 #partition = [[1,2,3],[4,5]]
 #partition = [[1,2,6],[3,4,5],[7]]
 #partition = [[0],[1],[2],[3],[4],[5],[6]]
 #n = 7
 
-#print(construct_dual_partition(partition, n)) # for partition = [[1,2,3],[4,5]], code is wrong
-#print(collection_arcs_primal(partition,n))
-#print(relable_dual(partition,n))
-#print(Refine_Partition_NC(partition))
+#[[0, 5, 11], [1, 9], [2, 10, 13, 14], [3], [4], [6], [7], [8, 12]] This partition cannot be further coarsen?
+#print(Coarsen_Partition_NN([[0, 5, 11], [1, 9], [2, 10, 13, 14], [3], [4], [6], [7], [8, 12]], 15))
 
-#print(Refine_Block_NC_withEdge(block, edge))
-#for i in range(0, len(block)):
- #   print(i)
-#print(Refine_Block_NC(block))
-#print(len(Refine_Block_NC(block)))
-
-#print(Refine_Partition_NC(partition))
-#print(len(Refine_Partition_NC(partition)))
-
-
-
-
-#print(construct_dual_partition(partition, n))
-#print(Coarsen_Partition_NC(partition, n))
-#print(len(Coarsen_Partition_NC(partition, n)))
-#partition = random_partition(10,3)
-#print(partition)
-#print(Refine_Partition_NC(partition))
-#partition_est = copy.deepcopy(partition)
-#partition_est[2] = random.shuffle(partition_est[2])
-#print(check_partition(partition, partition_est))
+#print(Random_Partition_NN(40,4))
+#print(is_nested([1,2],[7,9]))
+#print(hard_Partition_NN(15,2))
