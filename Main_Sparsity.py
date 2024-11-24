@@ -48,8 +48,8 @@ with tqdm(total=1) as pbar:
             theta = 10*Random_Sparse_Vector(d,d0)
             n = round(pow(d0,1/3)*pow(T,2/3))
  #           print(n)
-#            X = np.sqrt(d)*normalize(np.random.randn(n, d), axis=1, norm='l2')
-            X = np.random.randn(n, d)
+            X = np.sqrt(d)*normalize(np.random.randn(n, d), axis=1, norm='l2')
+  #          X = np.random.randn(n, d)
             Y = X @ theta + 0.1*np.random.randn(n)
 
 
