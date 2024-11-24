@@ -37,8 +37,8 @@ with tqdm(total=1) as pbar:
 
             n = round(pow(d0,1/3)*pow(T,2/3))
  #           print(n)
-            #X = normalize(np.random.randn(n, d), axis=1, norm='l2')
-            X = np.random.randn(n, d)
+            X = np.sqrt(d)*normalize(np.random.randn(n, d), axis=1, norm='l2')
+            #X = np.random.randn(n, d)
             Y = X @ theta + 0.1*np.random.randn(n)
             theta_est = np.linalg.inv(X.transpose() @ X) @ X.transpose() @ Y
             ##################################################################################################################
